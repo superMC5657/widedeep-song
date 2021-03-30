@@ -1,5 +1,4 @@
 import warnings
-
 warnings.filterwarnings("ignore")
 import itertools
 import pandas as pd
@@ -8,15 +7,19 @@ from tqdm import tqdm
 from collections import namedtuple
 import os
 import tensorflow as tf
+
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'  # or any {'0', '1', '2'}
 from tensorflow.keras.layers import *
 from tensorflow.keras.models import *
 from tensorflow.keras.callbacks import EarlyStopping
-from tensorflow.keras.losses import binary_crossentropy
+from tensorflow.keras.losses import binary_crossentropy, MSE
 from tensorflow.keras.optimizers import Adam
 from tensorflow.keras.metrics import AUC
 from tensorflow.keras.regularizers import l2
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import MinMaxScaler, LabelEncoder
+
+from tensorflow.keras.experimental import WideDeepModel # 使用keras的模型
 
 
 # from utils import SparseFeat, DenseFeat, VarLenSparseFeat
@@ -24,7 +27,6 @@ class Linear(Layer):
     """
     Linear Part
     """
-
     def __init__(self):
         super(Linear, self).__init__()
         self.dense = Dense(1, activation=None)
@@ -32,7 +34,6 @@ class Linear(Layer):
     def call(self, inputs, **kwargs):
         result = self.dense(inputs)
         return result
-
 
 class DNN(Layer):
     """
@@ -55,7 +56,6 @@ class DNN(Layer):
             x = dnn(x)
         x = self.dropout(x)
         return x
-
 
 class WideDeep(tf.keras.Model):
     def __init__(self, feature_columns, hidden_units, activation='relu',
@@ -102,7 +102,6 @@ class WideDeep(tf.keras.Model):
         sparse_inputs = Input(shape=(len(self.sparse_feature_columns),), dtype=tf.int32)
         tf.keras.Model(inputs=[dense_inputs, sparse_inputs],
                        outputs=self.call([dense_inputs, sparse_inputs])).summary()
-
 
 def sparseFeature(feat, feat_num, embed_dim=4):
     """
@@ -160,7 +159,8 @@ def create_song_dataset(file, embed_dim=8, read_part=True, sample_num=10000, tes
     # 特征工程
     mms = MinMaxScaler(feature_range=(0, 1))
     data_df[dense_features] = mms.fit_transform(data_df[dense_features])
-
+    # 尝试把feature放到一个尺度
+    data_df[sparse_features] = mms.fit_transform(data_df[sparse_features])
     feature_columns = [[denseFeature(feat) for feat in dense_features]] + \
                       [[sparseFeature(feat, len(data_df[feat].unique()), embed_dim=embed_dim)
                         for feat in sparse_features]]
@@ -171,7 +171,7 @@ def create_song_dataset(file, embed_dim=8, read_part=True, sample_num=10000, tes
 
     test_x = [test[dense_features].values.astype('float32'), test[sparse_features].values.astype('int32')]
     test_y = test['pid'].values.astype('int32')
-    view_test_x = pd.DataFrame(test_x)
+    #view_test_x = pd.DataFrame(test_x)
     return feature_columns, (train_x, train_y), (test_x, test_y)
 
 
@@ -179,9 +179,9 @@ if __name__ == "__main__":
     # 数据处理
     gpu = tf.config.experimental.list_physical_devices(device_type='GPU')
     os.environ['CUDA_VISIBLE_DEVICES'] = '0'
-    data_path = '/home/yin/workplace/RS/team-learning-rs/DeepRecommendationModel/code/data/data_sample.csv'
+    data_path = '/Myhome/zy/workspace/rs/widedeep-song/data/data_sample.csv'
     read_part = True
-    sample_num = 5000000
+    sample_num = 50000
     test_size = 0.2
 
     embed_dim = 8
@@ -202,9 +202,9 @@ if __name__ == "__main__":
     mirrored_strategy = tf.distribute.MirroredStrategy()
     with mirrored_strategy.scope():
         model = WideDeep(feature_columns, hidden_units)
-        model.summary()
+        #model.summary()
         # =========================Compile============================
-        model.compile(loss=binary_crossentropy, optimizer=Adam(learning_rate=learning_rate),
+        model.compile(loss=binary_crossentropy, optimizer=Adam(learning_rate=learning_rate), #
                       metrics=[AUC()])
     # ===========================Fit==============================
     model.fit(
