@@ -10,7 +10,7 @@ import pandas as pd
 由歌单到歌曲的映射->歌曲到歌单的映射
 '''
 
-data_df = pd.read_csv('../data/data_sample.csv')
+data_df = pd.read_csv('data/data_sample.csv')
 # 保留下来做feature engineer的特征
 selected_features = ['']
 
@@ -42,7 +42,7 @@ def function_first(x):
 
 # pid
 df_groupBy = data_df.groupby(by=index_f)
-series_pid = df_groupBy[label_f].unique()
+series_pid = df_groupBy[label_f].unique().apply(function_pid)
 df_new = pd.DataFrame({'pid': series_pid})
 # other
 for feature in sparse_feature_items + dense_feature_items:
