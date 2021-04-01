@@ -79,10 +79,10 @@ def create_song_dataset(data_path, read_part=False, sample_num=10000, test_size=
         label = data[label_items]
         return (dense_features, embedding_features, raw_features), indice_2_multi(label)
 
-    train_data, val_data = train_test_split(data_df, test_size=test_size)
+    train_data, test_data = train_test_split(data_df, test_size=test_size)
     train_x, train_y = construct_data(train_data)
-    val_x, val_y = construct_data(val_data)
-    return (dense_feature_columns, embedding_feature_columns, raw_feature_columns), (train_x, train_y), (val_x, val_y)
+    test_x, test_y = construct_data(test_data)
+    return (dense_feature_columns, embedding_feature_columns, raw_feature_columns), (train_x, train_y), (test_x, test_y)
 
 
 def indice_2_multi(label):
