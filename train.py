@@ -1,19 +1,18 @@
 import argparse
 import warnings
 
-from mmcv import Config
 from tensorflow import keras
 
 from models.widedeep import WideDeep
 from utils.dataset import create_song_dataset
-from utils.util_dir import generate_dir
+from utils.base import generate_dir, get_cfg
 
 warnings.filterwarnings("ignore")
 import os
 import tensorflow as tf
 from tensorflow.keras.losses import binary_crossentropy
 from tensorflow.keras.optimizers import Adam
-from tensorflow.keras.metrics import AUC, Recall, Accuracy
+from tensorflow.keras.metrics import AUC, Recall
 
 
 def train():
@@ -21,13 +20,10 @@ def train():
     gpu = tf.config.experimental.list_physical_devices(device_type='GPU')
     os.environ['CUDA_VISIBLE_DEVICES'] = '0'
     args = parse_args()
-    cfg = Config.fromfile(args.config)
-    train_cfg = cfg.get('train_cfg')
-    model_cfg = cfg.get('model_cfg')
-    dataset_cfg = cfg.get('dataset_cfg')
-    work_dir = os.path.join('work_dirs', train_cfg.get('work_dir'))
+    train_cfg, model_cfg, dataset_cfg, inf_cfg, work_dir, model_dir = get_cfg(args)
     generate_dir(work_dir)
-    feature_columns, train, test = create_song_dataset(data_path=train_cfg.get('data_path'),
+    feature_columns, train, test = create_song_dataset(data_path=dataset_cfg.get('data_path'),
+                                                       dataset_cfg=dataset_cfg,
                                                        read_part=train_cfg.get('read_part'),
                                                        sample_num=train_cfg.get('sample_num'),
                                                        test_size=train_cfg.get('test_size'),
@@ -62,8 +58,8 @@ def train():
     # ===========================Test==============================
     print('test AUC: %f' % model.evaluate(test_X, test_y, batch_size=train_cfg.get('batch_size'))[1])
     # ===========================Save==============================
-    model.save(filepath=os.path.join(work_dir, 'models', 'model'))
-    embed_model.save(filepath=os.path.join(work_dir, 'models', 'embed_model'))
+    model.save(filepath=os.path.join(model_dir, 'model'))
+    embed_model.save(filepath=os.path.join(model_dir, 'embed_model'))
     keras.utils.plot_model(model, to_file=os.path.join(work_dir, 'model.png'))
     keras.utils.plot_model(embed_model, to_file=os.path.join(work_dir, 'embed_model.png'))
 

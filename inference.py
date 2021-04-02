@@ -4,9 +4,12 @@
 # !@fileName: inference.py
 import argparse
 import os
+
 import numpy as np
+import tensorflow as tf
 from tensorflow import keras
-from mmcv import Config
+
+from utils.base import get_cfg
 
 
 def parse_args():
@@ -18,19 +21,14 @@ def parse_args():
 
 def inference():
     args = parse_args()
-    cfg = Config.fromfile(args.config)
-    train_cfg = cfg.get('train_cfg')
-    model_cfg = cfg.get('model_cfg')
-    dataset_cfg = cfg.get('dataset_cfg')
-    work_dir = os.path.join('work_dirs', train_cfg.get('work_dir'))
-    model_dir = os.path.join(work_dir, 'models', 'model')
-    model = keras.models.load_model(model_dir)
+    train_cfg, model_cfg, dataset_cfg, inf_cfg, work_dir, model_dir = get_cfg(args)
+    embed_model = keras.models.load_model(os.path.join(model_dir, 'embed_model'))
     ## 测试
     dense_features = np.random.random((1, 10))
     embedding_features = np.array([[10]])
     raw_features = np.array([[1]])
-    predict = model((dense_features, embedding_features, raw_features))
-    print(predict)
+    predict = embed_model((dense_features, embedding_features, raw_features))
+    print(tf.reduce_sum(predict))
 
 
 if __name__ == '__main__':

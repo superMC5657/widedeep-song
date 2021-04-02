@@ -1,5 +1,4 @@
 *.idea
-data/data_sample.csv
+data
 *__pycache__
-data/head.xlsx
 work_dirs

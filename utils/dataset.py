@@ -1,10 +1,8 @@
 import warnings
 
 warnings.filterwarnings("ignore")
-import os
 import pandas as pd
 import numpy as np
-import tensorflow as tf
 from sklearn.preprocessing import MinMaxScaler, LabelEncoder
 from sklearn.model_selection import train_test_split
 
@@ -29,7 +27,7 @@ def denseFeature(feat):
     return {'feat': feat}
 
 
-def create_song_dataset(data_path, read_part=False, sample_num=10000, test_size=0.2, embed_dim=4):
+def create_song_dataset(data_path, dataset_cfg, read_part=False, sample_num=10000, test_size=0.2, embed_dim=4):
     """
     a example about creating song dataset'
     :param data_path: dataset's path
@@ -45,17 +43,14 @@ def create_song_dataset(data_path, read_part=False, sample_num=10000, test_size=
     else:
         data_df = pd.read_csv(data_path)
 
-    # 离散特征: 专辑链接（字符串）、艺术家链接（字符串）、曲调(0-12)、音符时值（0-5）、所属歌单（整数连续） /曲目链接（字符串）"track_uri" 不使用 "pid"  不使用"time_signature"
-    embedding_feature_items = ['key']
-    raw_feature_items = ['mode']
+    embedding_feature_items = dataset_cfg.get("embedding_feature_items")
+    raw_feature_items = dataset_cfg.get('raw_feature_items')
     sparse_feature_items = embedding_feature_items + raw_feature_items
 
-    # 连续特征: 歌曲时长、原声程度(0-1)、律动感(0-1)、冲击感(0-1)、歌唱部分占比(0-1)、现场感(0-1)、响度、重复度(0-1)、朗诵比例(0-1)、分钟节拍数、心理感受(0-1)
-    dense_feature_items = ["duration_ms_x", "acousticness", "danceability", 'energy', 'instrumentalness', 'liveness',
-                           'loudness', 'speechiness', 'tempo', 'valence']  # continuous
+    dense_feature_items = dataset_cfg.get('dense_feature_items')
 
     # 标签 multi-hot
-    label_items = 'pid'
+    label_item = dataset_cfg.get('label_item')
 
     # feature columns
     dense_feature_columns = [denseFeature(item) for item in dense_feature_items]
@@ -76,9 +71,13 @@ def create_song_dataset(data_path, read_part=False, sample_num=10000, test_size=
         dense_features = data[dense_feature_items].values.astype('float32')
         embedding_features = data[embedding_feature_items].values.astype('int32')
         raw_features = data[raw_feature_items].values.astype('int32')
-        label = data[label_items]
+        label = data[label_item]
         return (dense_features, embedding_features, raw_features), indice_2_multi(label)
 
+    if test_size == 0:
+        data_x, data_y = construct_data(data_df)
+        indexes = data_df.index.astype(np.int)
+        return indexes, data_x
     train_data, test_data = train_test_split(data_df, test_size=test_size)
     train_x, train_y = construct_data(train_data)
     test_x, test_y = construct_data(test_data)
@@ -94,12 +93,3 @@ def indice_2_multi(label):
         m_hot[l] = 1
         multi_hot_label[index, :] = m_hot
     return multi_hot_label
-
-
-if __name__ == "__main__":
-    gpu = tf.config.experimental.list_physical_devices(device_type='GPU')
-    os.environ['CUDA_VISIBLE_DEVICES'] = '0'
-    data_path = 'data/groupby.csv'
-    create_song_dataset(data_path, read_part=True)
-    # label = "[1 2 3 4]"
-    # indice_2_multi(label)
